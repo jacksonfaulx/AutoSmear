@@ -56,7 +56,7 @@ def AutoSmear(file,folder,length=10000):
         sqr=math.sqrt(nearsq)
         sqy=math.sqrt(nearsq)
         sqx=math.sqrt(nearsq)
-        diff=nearsq-(cols-1)
+        diff=nearsq-(cols-2)
         while diff>sqr:
             sqy-=1
             diff-=sqr
@@ -192,7 +192,9 @@ for folder in os.listdir():
     sub_path=os.path.join(os.getcwd(),folder)
     if os.path.isdir(sub_path):
         for file in os.listdir(sub_path):
+            print(file)
             if file.endswith('Electropherogram.csv'):
+                print('hello')
                 #The above function is then executed on the data and the results are written to a new folder called smear_results
                 input_file=os.path.join(sub_path,file)
                 AutoSmear(input_file,input_folder)
