@@ -1,3 +1,22 @@
-File	Construct	Lanes	Skip Lanes	Timepoints
-/Users/jacksonfaulx/CSL_Seqirus/FragA_gating/smear_results/2024-07-02 Stability CC 12-46-54_smear_results.csv	pBPD16	"C1-C6, C8"	"C2,C3,C5"	"0,1,2,3,4,5,6,7,8,9,10,11"
-/Users/jacksonfaulx/CSL_Seqirus/FragA_gating/smear_results/2024-07-02 Stability CC_run2_15-41-15_smear_results.csv	pBPD16	"A3,B3,G1-G12"		"0,1,2,3,4,5,6,7,8,9,10,11,12"
+File	Construct	Lanes	Skip Lanes
+/Users/jacksonfaulx/Desktop/mark_analysis/smear_results/mark_data_smear_results.csv	pBPD39_10mM	A1-12	A7
+/Users/jacksonfaulx/Desktop/mark_analysis/smear_results/mark_data_smear_results.csv	pBPD41_10mM	B1-B12	
+/Users/jacksonfaulx/Desktop/mark_analysis/smear_results/mark_data_smear_results.csv	pBPD42_10mM	C1-C12	"C3,C4,C6,"
+/Users/jacksonfaulx/Desktop/mark_analysis/smear_results/mark_data_smear_results.csv	pBPD43_10mM	D1-D12	"D2,D10,D12"
+/Users/jacksonfaulx/Desktop/mark_analysis/smear_results/mark_data_smear_results.csv	pBPD44_10mM	E1-E12	
+/Users/jacksonfaulx/Desktop/mark_analysis/smear_results/mark_data_smear_results.csv	pBPD45_10mM	F1-F12	
+/Users/jacksonfaulx/Desktop/mark_analysis/smear_results/mark_data_smear_results.csv	pBPD46_10mM	G1-G12	"G2,G9,G10,G11"
+/Users/jacksonfaulx/Desktop/mark_analysis/smear_results/mark_data2_smear_results.csv	pBPD49_10mM	A1-A12	
+/Users/jacksonfaulx/Desktop/mark_analysis/smear_results/mark_data2_smear_results.csv	pBPD51_10mM	B1-B12	B7
+/Users/jacksonfaulx/Desktop/mark_analysis/smear_results/mark_data2_smear_results.csv	pBPD52_10mM	C1-C12	"C3,C5,C6"
+/Users/jacksonfaulx/Desktop/mark_analysis/smear_results/mark_data2_smear_results.csv	pBPD39_20mM	E1-E12	
+/Users/jacksonfaulx/Desktop/mark_analysis/smear_results/mark_data2_smear_results.csv	pBPD41_20mM	F1-F12	
+/Users/jacksonfaulx/Desktop/mark_analysis/smear_results/mark_data2_smear_results.csv	pBPD42_20mM	G1-G12	
+/Users/jacksonfaulx/Desktop/mark_analysis/smear_results/mark_data2_smear_results.csv	pBPD43_20mM	H1-H11	
+/Users/jacksonfaulx/Desktop/mark_analysis/smear_results/mark_data3_smear_results.csv	pBPD44_20mM	A1-A12	
+/Users/jacksonfaulx/Desktop/mark_analysis/smear_results/mark_data3_smear_results.csv	pBPD45_20mM	B1-B12	
+/Users/jacksonfaulx/Desktop/mark_analysis/smear_results/mark_data3_smear_results.csv	pBPD46_20mM	C1-C12	
+/Users/jacksonfaulx/Desktop/mark_analysis/smear_results/mark_data3_smear_results.csv	pBPD47_20mM	D1-D12	D7
+/Users/jacksonfaulx/Desktop/mark_analysis/smear_results/mark_data3_smear_results.csv	pBPD49_20mM	E1-E12	
+/Users/jacksonfaulx/Desktop/mark_analysis/smear_results/mark_data3_smear_results.csv	pBPD51_20mM	F1-F12	
+/Users/jacksonfaulx/Desktop/mark_analysis/smear_results/mark_data3_smear_results.csv	pBPD52_20mM	G1-G12	

@@ -148,8 +148,8 @@ def AutoSmear(file,folder,length=10000):
         lb_idx=list(xvals).index(left_bound)
         rb_idx=list(xvals).index(right_bound)
         #The total area and area within the gates are then calculated to give a percentage
-        total_area=np.trapz(y=yvals[lb_idx:rb_idx+1],x=xvals[lb_idx:rb_idx+1])
-        gated_area=np.trapz(y=yvals[lidx:ridx+1],x=xvals[lidx:ridx+1])
+        total_area=np.trapezoid(y=yvals[lb_idx:rb_idx+1],x=xvals[lb_idx:rb_idx+1])
+        gated_area=np.trapezoid(y=yvals[lidx:ridx+1],x=xvals[lidx:ridx+1])
         percent=(gated_area/total_area)*100
         percents.append(round(percent,2))
         #The data and gates are then plotted in a grid
@@ -169,7 +169,7 @@ def AutoSmear(file,folder,length=10000):
     else:
         plt.subplots_adjust(bottom=0.1,right=10,top=10)
     grid_total=int(sqy*sqx)
-    gdiff=grid_total-(cols-1)
+    gdiff=grid_total-(cols-2)
     if gdiff>0:
         for num in range(int(gdiff)):
             fig.delaxes(axs[int(sqy)-1][(int(sqx)-1)-int(num)])
@@ -192,9 +192,7 @@ for folder in os.listdir():
     sub_path=os.path.join(os.getcwd(),folder)
     if os.path.isdir(sub_path):
         for file in os.listdir(sub_path):
-            print(file)
             if file.endswith('Electropherogram.csv'):
-                print('hello')
                 #The above function is then executed on the data and the results are written to a new folder called smear_results
                 input_file=os.path.join(sub_path,file)
                 AutoSmear(input_file,input_folder)

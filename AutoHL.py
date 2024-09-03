@@ -1,5 +1,4 @@
 #!bin/bash python3
-
 from scipy.optimize import curve_fit
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -34,7 +33,6 @@ def half_life(x,y,factor):
     ss_tot=np.sum((ynorm-np.mean(ynorm))**2)
     R_sq=1-(ss_res/ss_tot)
     hl=np.log(2)/k
-    print(hl)
     return x,y2,ynorm,hl,R_sq
 
 def AutoHL(samplesheet):
@@ -50,13 +48,14 @@ def AutoHL(samplesheet):
     '''
     #read in samplesheet
     sample_sheet=pd.read_csv(samplesheet,sep='\t')
+    exp_name=sample_sheet["experiment_name"].values[0]
     #set up a dictionary that will contain experimental groups as keys, with their corresponding rows from each of the files specified in the samplesheet
     data_dict={}
     os.chdir("..")
     #set up the half-life results table
     hl_table=pd.DataFrame(columns=['Construct','Half_Life'])
     #get the list of files to be analyzed
-    file_set=sample_sheet["File"].tolist()
+    file_set=sample_sheet["File"].unique().tolist()
     #for each file, read the smear table in and find all of the samples that are to be analyzed in this file
     for file in file_set:
         smear_table=pd.read_csv(file)
@@ -88,11 +87,14 @@ def AutoHL(samplesheet):
             for y in skip_list:
                 if y in sample_lanes:
                     sample_lanes.remove(y)
+            #print(s)
             #If the sample group is already present in the dictionary, the table rows are appended to the existing table
             if s in data_dict.keys():
                 data_dict[s]=pd.concat([data_dict[s], smear_table[smear_table["Lane"].isin(sample_lanes)]], ignore_index=True, axis=0)
             #Else, a new sample group key is created and the table rows are added to the dictionary
             else:
+                #print(s)
+                #print(smear_table[smear_table["Lane"].isin(sample_lanes)])
                 data_dict[s]=smear_table[smear_table["Lane"].isin(sample_lanes)]
     #I then loop through data for each sample group and extract the timepoint from the sample name
     for key,tab in data_dict.items():
@@ -110,6 +112,7 @@ def AutoHL(samplesheet):
     plot_data=[]
     #for each of the sample groups, I generate a normalized integrity table containing averages across replicates, normalized average integrity, number of
     #replicates, and standard deviation across replicated for each timepoint
+    #print(data_dict)
     for key,val in data_dict.items():
         norm_data=pd.DataFrame(columns=['Timepoint','Replicates','Average_Integrity','Normalized_Integrity','Standard_Deviation'])
         time=[]
@@ -140,11 +143,11 @@ def AutoHL(samplesheet):
         norm_data.to_csv('half_life_results/'+key+'_normalized_data.csv',index=False)
         #I append the half-life values to the list and add the half-life curve points to a list that will help with plotting all of the sample groups together
         hls.append(model[3])
-        plot_data.append([model[0],model[1],model[2]])
+        plot_data.append([model[0],model[1],model[2],key])
         #I then write the individual plots
         plt.plot(model[0],model[1],label=key)
         plt.scatter(model[0],model[2],marker='o')
-        plt.title("Half-Life of "+str(key)+" at 10mM Mg")
+        plt.title("Half-Life of "+str(key))
         plt.legend()
         plt.xlabel('Time (hr)')
         plt.ylabel('Normalized RNA Integrity (%)')
@@ -155,25 +158,26 @@ def AutoHL(samplesheet):
     #I then create a table containing half-life values for all experimental groups and write it to a csv
     hl_table=hl_table.assign(Half_Life=hls)
     hl_table=hl_table.assign(Construct=data_dict.keys())
-    hl_table.to_csv('half_life_results/half_life_table.csv',index=False)
+    hl_table.to_csv('half_life_results/'+exp_name+'_half_life_table.csv',index=False)
     #I then loop through the plot data for each sample group and plot them together
+    #plt.style.use('ggplot')
     for p in plot_data:
-        print("pl;ot")
-        plt.plot(p[0],p[1],label=key)
+        plt.plot(p[0],p[1],label=p[3])
         plt.scatter(p[0],p[2],marker='o')
-    plt.title("Half-Life of Constructs at 10mM Mg")
-    plt.legend()
+    plt.title("Half-Life of Constructs")
+    plt.legend(bbox_to_anchor=(1.35,0.01),loc='lower right')
     plt.xlabel('Time (hr)')
     plt.ylabel('Normalized RNA Integrity (%)')
     #The plot is then saved as a png
-    plt.savefig("half_life_results/half_life.jpg",bbox_inches='tight')
+    plt.savefig("half_life_results/"+exp_name+"_half_life.jpg",bbox_inches='tight')
     
-    
-    return "Half-Life Analysis Complete"
+    return None
 
 #the samplesheet found within the current folder is used as an input for the AutoHL function
 for file in os.listdir():
     if file.endswith("samplesheet.tsv"):
         ss_path=os.path.join(os.getcwd(),file)
+        print(ss_path)
         AutoHL(ss_path)
+        os.chdir("AutoSmear_HL")
 print("Half-Life Analysis Complete")
