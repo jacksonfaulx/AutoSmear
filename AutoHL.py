@@ -23,7 +23,7 @@ def formula(x,a,b,k):
 def half_life(x,y,factor):
     ynorm=np.array([a*factor for a in y])
     p0=(1.,1.e-5,1.)
-    #opt,pcov=curve_fit(formula,x,ynorm,bounds=(0,[100.,1.]))
+    #opt,pcov=curve_fit(formula,x,ynorm,bounds=([0,0,-np.inf],[100.,1.,np.inf]))
     opt,pcov=curve_fit(formula,x,ynorm)
     a,b,k=opt
     #print(k,b)

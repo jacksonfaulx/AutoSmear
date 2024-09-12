@@ -1,0 +1,12 @@
+faicons
+shiny
+seaborn
+pandas
+matplotlib
+numpy
+scipy
+os
+re
+io
+pathlib
+math

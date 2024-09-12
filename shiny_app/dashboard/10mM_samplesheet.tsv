@@ -1,0 +1,17 @@
+experiment_name	File	Construct	Lanes	Skip Lanes
+10mM Constructs	mark_data_smear_results.csv	pBPD39_10mM	A1-12	A7
+	mark_data_smear_results.csv	pBPD41_10mM	B1-B12	
+	mark_data_smear_results.csv	pBPD42_10mM	C1-C12	"C3,C4,C6,C9"
+	mark_data_smear_results.csv	pBPD43_10mM	D1-D12	"D2,D10,D12"
+	mark_data_smear_results.csv	pBPD44_10mM	E1-E12	
+	mark_data_smear_results.csv	pBPD45_10mM	F1-F12	
+	mark_data_smear_results.csv	pBPD46_10mM	G1-G12	"G2,G9,G10,G11"
+	mark_data2_smear_results.csv	pBPD49_10mM	A1-A12	
+	mark_data2_smear_results.csv	pBPD51_10mM	B1-B12	B7
+	mark_data2_smear_results.csv	pBPD52_10mM	C1-C12	"C3,C5,C6"
+	mark_control_smear_results.csv	pBPD27_10mM	A1-A12	
+	mark_control_smear_results.csv	pBPD39_10mM	C1-12	
+	mark_control_smear_results.csv	pBPD45_10mM	E1-E12	
+	2024-07-02 Stability CC 12-46-54_smear_results.csv	pBPD14_10mM	A1-A12	
+	2024-07-02 Stability CC_run2_15-41-15_smear_results.csv	pBPD14_10mM	"A1,B1,E1-E12"	
+	2024-07-02 Stability CC_run2_15-41-15_smear_results.csv	3994_10mM	"A9,B9,C1-C12,D1-D12"	"D2,D5,D12"

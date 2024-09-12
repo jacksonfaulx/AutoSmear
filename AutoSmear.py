@@ -75,7 +75,8 @@ def AutoSmear(file,folder,length=10000):
         sqx=math.sqrt(nearsq)
         fig,axs=plt.subplots(int(sqy),int(sqx))
     grid_ax=[0,0]
-    previous_peak=10000
+    start_peak=xvals[min(range(len(xvals)),key=lambda i: abs(xvals[i]-10000))]
+    previous_peak=list(xvals).index(start_peak)
     #I then iterate over each sample run (capillary)
     for i in range(1,cols-1):
         #RFU (y-values) are established
