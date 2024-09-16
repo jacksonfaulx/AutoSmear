@@ -269,7 +269,7 @@ def server(input, output, session):
         smear_table=smear_table.assign(Right_Gate=right_gates)
         smear_table=smear_table.assign(Percent_Total=percents)
         #the graphs of peak calling for each sample are written to a jpg in the same folder
-        plt.savefig("peaks_plot.jpg",bbox_inches='tight')
+        plt.savefig("peaks_plot.png",bbox_inches='tight')
         return [smear_table,fig]
     
 
