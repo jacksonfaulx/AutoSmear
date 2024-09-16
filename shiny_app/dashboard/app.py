@@ -1,3 +1,5 @@
+import sys
+sys.path.append('/opt/anaconda3_24/lib/python3.11/site-packages/')
 import seaborn as sns
 from faicons import icon_svg
 from shiny import App, reactive, render, ui, req, Outputs, Session
@@ -14,7 +16,6 @@ import math
 
 
 app_dir = Path(__file__).parent
-
 app_ui = ui.page_fluid(
     ui.page_navbar(
         ui.nav_panel("AutoSmear",
