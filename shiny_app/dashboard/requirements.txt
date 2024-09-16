@@ -5,7 +5,6 @@ pandas
 matplotlib
 numpy
 scipy
-os
 re
 io
 pathlib
