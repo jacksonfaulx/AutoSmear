@@ -18,12 +18,19 @@ import math
 app_dir = Path(__file__).parent
 app_ui = ui.page_fluid(
     ui.page_navbar(
-        ui.nav_panel("AutoSmear",
+        ui.nav_spacer(),
+        ui.nav_panel(ui.h4("AutoSmear"),
                 ui.layout_sidebar(
-                    ui.sidebar(ui.h3("Data Input"),
-                        ui.input_file("input_csv","Choose Electropherogram File (CSV)",accept=[".csv"],multiple=False),
-                        ui.input_text("exp_name","Experiment Name:",placeholder="ex. EXP_01"),
-                        ui.input_action_button('submit','Submit')
+                    ui.sidebar(
+                        ui.h2("Automated Smear Analysis"),
+                        ui.p("This tool is designed to automatically define the edges of the target peak to calculate the percent RNA integrity from fragment analyzer electropherogram data exported from ProSize."),
+                        ui.h2("Data Input"),
+                        ui.input_file("input_csv",ui.h4("Choose Electropherogram File (CSV)"),accept=[".csv"],multiple=False),
+                        ui.p("Upload an Electropherogram.csv file exported from ProSize, with size (nt) as the x-axis value"),
+                        ui.input_text("exp_name",ui.h4("Experiment Name"),placeholder="ex. EXP_01"),
+                        ui.p("Type in a name for the experiment. This name will be added to the file names of the downloadable plots and tables"),
+                        ui.input_action_button('submit','Submit'),
+                        width='20%'
                         ),
                 ui.layout_columns(
                     ui.card(
@@ -46,14 +53,46 @@ app_ui = ui.page_fluid(
                     )
                 )
             ),
-        ui.nav_panel("AutoHL",
+        ui.nav_spacer(),
+        ui.nav_panel(ui.h4("AutoHL"),
                 ui.layout_sidebar(
-                    ui.sidebar(ui.h3("Data Input"),
-                        ui.input_file("input_hl","Choose Electropherogram File (CSV)",accept=[".csv"],multiple=True),
-                        ui.input_file("input_ss","Upload Sample Sheet",accept=[".csv",".tsv",".txt"],multiple=False),
-                        ui.input_text("exp_hl","Experiment Name:",placeholder="ex. EXP_01"),
+                    ui.sidebar(
+                        ui.h2("Automated Half-Life Calculation"),
+                        ui.p("This tool is designed to fit the integrity values calculated using ProSize or AutoSmear to a one-phase decay equation, plotting the resulting curve and calculating the half-life of a construct based on timepoints.."),
+                        #ui.p("The script takes a samplesheet as an input, indicating the paths of relevant smear analysis files to be analyzed, along with details regarding sample groups and their corresponding lanes in the smear table. If multiple constructs are present within the data, a combined plot and data table will be generated as an output for comparison"),
+                        ui.h2("Data Input"),
+                        ui.input_file("input_hl",ui.h4("Choose Smear Results File (CSV)"),accept=[".csv"],multiple=True),
+                        ui.p("Upload one or more smear results files (.csv format), obtained from AutoSmear or ProSize"),
+                        ui.input_file("input_ss",ui.h4("Upload Sample Sheet"),accept=[".csv",".tsv",".txt"],multiple=False),
+                        ui.p("Upload a samplesheet formatted as detailed below. An example template can be downloaded below"),
+                        ui.tags.ul(
+                            ui.tags.li("experiment_name"),
+                                ui.tags.ul(
+                                 ui.tags.li("only need to specify once in the first row, name is used for combined outputs"),
+                             ),
+                            ui.tags.li("File"),
+                                ui.tags.ul(
+                                 ui.tags.li("The full name of a smear results file (NOT full path)"),
+                             ),
+                            ui.tags.li("Construct"),
+                                ui.tags.ul(
+                                 ui.tags.li("name of the sample being tested across timepoints"),
+                             ),
+                            ui.tags.li("Lanes"),
+                                ui.tags.ul(
+                                 ui.tags.li("names of all the lanes associated with the Construct. Lanes must be separated by commas with no spaces in between"),
+                             ),
+                            ui.tags.li("Skip_Lanes"),
+                                ui.tags.ul(
+                                 ui.tags.li("lanes containing bad quality data can be listed here and will be skipped in analysis. Same format as 'Lanes' column"),
+                             ),
+                        ),
+                        ui.download_link("example_sheet","Download Samplesheet Template"),
+                        ui.input_text("exp_hl",ui.h4("Experiment Name"),placeholder="ex. EXP_01"),
+                        ui.p("Type in a name for the experiment. This name will be added to the file names of the downloadable plots and tables"),
                         ui.input_action_button('submit_hl','Submit'),
-                        ui.output_ui("sample_select")
+                        ui.output_ui("sample_select"),
+                        width='20%'
                         ),
                 ui.layout_columns(
                     ui.card(
@@ -95,7 +134,10 @@ app_ui = ui.page_fluid(
                     )
                 )
             ),
-        title=ui.h2("Automated Smear Analysis and Half-Life Calculator")
+        ui.nav_spacer(),
+        title=ui.div(ui.h1("Automated Smear Analysis"),
+                     ui.h1("and Half-Life Calculator")
+        )
     )
 )
 
@@ -363,7 +405,7 @@ def server(input, output, session):
             for s in samples['Construct'].tolist():
                 lanes=samples[samples["Construct"]==s]['Lanes'].to_string(index=False)
                 lane_list=lanes.split(',')
-                skip=samples[samples["Construct"]==s]['Skip Lanes'].to_string(index=False)
+                skip=samples[samples["Construct"]==s]['Skip_Lanes'].to_string(index=False)
                 skip_list=skip.split(',')
                 skip_list=[x.replace(' ','') for x in skip_list]
                 #print(lane_list)
@@ -565,6 +607,23 @@ def server(input, output, session):
         with io.BytesIO() as buf:
             plt.savefig(buf,format='png')
             yield buf.getvalue()
+    
+    @render.download(filename='samplesheet_template.csv')
+    def example_sheet():
+        if input.exp_hl():
+            exp_name=input.exp_hl()
+        else:
+            exp_name="experiment name"
+        ss_df=pd.DataFrame(columns=["experiment_name","File","Construct","Lanes","Skip_Lanes"])
+        ss_df=ss_df.assign(experiment_name=[exp_name])
+        ss_df=ss_df.assign(File=["file_name_smear_results.csv"])
+        ss_df=ss_df.assign(Construct=["sample_name (eg. pBPD16)"])
+        ss_df=ss_df.assign(Lanes=["A1-A12,B1"])
+        ss_df=ss_df.assign(Skip_Lanes=["A1-A3,A9"])
+        with io.BytesIO() as buf:
+            ss_df.to_csv(buf,index=False)
+            yield buf.getvalue()
+
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 
 app = App(app_ui, server)
