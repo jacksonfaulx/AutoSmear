@@ -141,6 +141,11 @@ app_ui = ui.page_fluid(
                         then select the .raw format file within that folder. ProSize will then show a screen containing general information and metadata regarding the experiment. \
                         Select the "Open" button in the bottom left of the window'),
                     ui.output_image("import_menu",height='auto'),
+                    ui.p('If the data has not been analyzed in ProSize before, ProSize will prompt you to set a calibration curve and set various analysis parameters. Below are \
+                        screenshots of settings for a typical mRNA fragment analyzer run. Importantly, manual baseline must be set frokm 35 minutes to 90 minutes.'),
+                    ui.output_image("peak_calibration",height='auto'),
+                    ui.output_image("peak_settings",height='auto'),
+                    ui.output_image("baseline_settings",height='auto'),
                     ui.p('After adjusting the analysis settings and fitting the calibration curve, select the green file icon from the icon menu as shown below. A window will then \
                         pop up with various specifications for the format of output files. Please make sure that the settings match those of the example below, \
                         importantly the x-axis must be set at "size". Then in the bottom right box, select the folder where you want the output to go click "export".'),
@@ -244,8 +249,7 @@ app_ui = ui.page_fluid(
         ),
         position='fixed-top',bg='#FC1921',window_title="AutoSmear_HL",inverse=True
     ),
-    ui.p("Developed and managed by Jackson Faulx. Please email jackson.faulx@seqirus.com for any \
-                                                                                        issues or inquiries",id_="footer"),
+    ui.p("Developed and managed by Jackson Faulx. Please email jackson.faulx@seqirus.com regarding any issues or inquiries",id_="footer"),
 )
 
 
@@ -475,26 +479,62 @@ def server(input, output, session):
 
 # FUNCTIONS
 
-    def formula(x,a,b,k):
+    def formula(x,a,k,b):
         return a*np.exp(-k*x)+b
 
-    def half_life(x,y,factor):
-        ynorm=np.array([a*factor for a in y])
-        p0=(1.,1.e-5,1.)
-        opt,pcov=curve_fit(formula,x,ynorm,p0,bounds=([0,-np.inf,-np.inf],[100.,np.inf,np.inf]))
+    #def half_life(x,y,factor):
+    #    ynorm=np.array([a*factor for a in y])
+    #    p0=(1.,1.e-5,1.)
+    #    opt,pcov=curve_fit(formula,x,ynorm,p0,bounds=([0,-np.inf,-np.inf],[100.,np.inf,np.inf]))
         #opt,pcov=curve_fit(formula,x,ynorm,p0)
-        a,b,k=opt
+    #    a,b,k=opt
         #print(k,b)
-        y2=formula(x,a,b,k)
+    #    y2=formula(x,a,b,k)
         #getting Rsquared value
-        residuals=ynorm-formula(x,*opt)
-        ss_res=np.sum(residuals**2)
-        ss_tot=np.sum((ynorm-np.mean(ynorm))**2)
-        R_sq=1-(ss_res/ss_tot)
+    #    residuals=ynorm-formula(x,*opt)
+    #    ss_res=np.sum(residuals**2)
+    #    ss_tot=np.sum((ynorm-np.mean(ynorm))**2)
+    #    R_sq=1-(ss_res/ss_tot)
         #half-life calculation
-        hl=np.log(2)/k
+    #    hl=np.log(2)/k
         #print(hl)
-        return x,y2,ynorm,hl,R_sq
+    #    return x,y2,ynorm,hl,R_sq
+
+    def half_life(x,y,factor):
+        y = np.array([a*factor for a in y])
+        #popt, pcov = curve_fit(func, x, y)
+        p0 = (1.,1.e-5,1.) # starting search koefs
+        opt, pcov = curve_fit(formula, x, y, p0)
+        a, k, b = opt
+        x2 = np.linspace(0, max(x), 100)
+        y2 = formula(x2, a, k, b)
+
+        ## half life calculation 
+        # establish bottom 
+        for time_x in range(100000) :
+            if time_x > 0 :
+                x_diff = time_x-(time_x-1) 
+                y_diff = (a * np.exp(-k*time_x) + b) -  (a * np.exp(-k*(time_x-1)) + b)
+                if y_diff >= -0.01 :
+                    ## determine this as plateau
+                    bottom_y = (a * np.exp(-k*time_x) + b)
+                    y_half = (100-(a * np.exp(-k*time_x) + b))/2
+                    x_half = (np.log((y_half-b)/a))/-k
+                    #print(y_half, x_half, bottom_y)
+                    break
+        #fig, ax = plt.subplots()
+        #ax.plot(x2, y2, color='r', label='Fit. func: $f(x) = %.3f e^{%.3f x} %+.3f$' % (a,k,b))
+        #ax.plot(x, y, 'bo', label='whatever construct')
+        #ax.plot(x_half, y_half, 'go', label="half_life "+str(x_half)[:6])
+        #x2, y2 = [0, x_half], [y_half, y_half]
+        #x1, y1 = [x_half, x_half], [bottom_y, y_half]
+        #plt.plot(x2, y2, 'g--')
+        #plt.plot(x1, y1, 'g--')
+        #ax.legend(loc='best')
+        #plt.ylabel("RNA integrity")
+        #plt.xlabel("Time (hr)")
+        #plt.show()
+        return x,y2,y,x_half,x2
     
     def calculate_half_life(input_files,file_names,ss):
         #read in samplesheet
@@ -550,6 +590,8 @@ def server(input, output, session):
             for a in IDs:
                 #will find the timepoint as long as it is the last number found in the sample ID
                 hour=re.findall(r'\d+', a)[-1]
+                if not hour:
+                    raise Exception("Error: Cannot determine timepoint from sample name. Please make sure the sample name ends with the timepoint preceded by an underscore (eg. sample1_4hr)")
                 timescale.append(hour)
             data_dict[key]=tab.assign(timepoint=[eval(i) for i in timescale])
         #print(data_dict)
@@ -585,28 +627,37 @@ def server(input, output, session):
             model=half_life(np.array(time),np.array(integrity),norm_factor)
             norm_data=norm_data.assign(Normalized_Integrity=[round(x,2) for x in model[2]])
             hls.append(model[3])
-            plot_data.append([model[0],model[1],model[2],key,stdevs])
+            plot_data.append([model[0],model[1],model[2],key,stdevs,model[4]])
             ind_plot=plt.figure()
-            plt.plot(model[0],model[1],label=key)
+            #plt.plot(model[0],model[1],label=key)
+
+            plt.plot(model[4],model[1],label=key)
+
             #plt.plot(manual_half[0],manual_half[1],'#808284')
             plt.scatter(model[0],model[2],marker='o')
             plt.title("Half-Life of "+str(key)+" at 10mM Mg")
             plt.legend()
             plt.xlabel('Time (hr)')
             plt.ylabel('Normalized RNA Integrity (%)')
+            plt.grid(axis = 'y')
+            plt.yticks(range(0,110,10))
             plt_dict[key]=ind_plot
             st_dict[key]=norm_data
             plt.errorbar(model[0], model[2], stdevs, linestyle='None', capsize=3)
             #plt.scatter(manual_half[0],manual_half[2],color='#808284',marker='o')
         #plt.legend(['Automated','Manual (Mark)'])
         #Need a way to first plot individual plots, then add plot object to a list for graphing against other sample groups
+        #print(hls)
         hl_table=hl_table.assign(Half_Life=[round(x,2) for x in hls])
         hl_table=hl_table.assign(Construct=data_dict.keys())
         #hl_table.to_csv('half_life_table.csv',index=False)
         combined_plot=plt.figure()
         cm = plt.get_cmap('tab20')
         for c,p in enumerate(plot_data):
-            plt.plot(p[0],p[1],label=p[3],color=cm(c))
+            #plt.plot(p[0],p[1],label=p[3],color=cm(c))
+
+            plt.plot(p[5],p[1],label=p[3],color=cm(c))
+
             #plt.plot(manual_half[0],manual_half[1],'#808284')
             plt.scatter(p[0],p[2],marker='o',color=cm(c))
             plt.errorbar(p[0], p[2], p[4], linestyle='None', capsize=3)
@@ -614,6 +665,9 @@ def server(input, output, session):
         plt.legend()
         plt.xlabel('Time (hr)')
         plt.ylabel('Normalized RNA Integrity (%)')
+        plt.yticks(range(0,110,10))
+        plt.grid(axis = 'y')
+
         
         return st_dict, hl_table, combined_plot, plt_dict, sample_list, plot_data
 
@@ -767,6 +821,24 @@ def server(input, output, session):
     def file_select():
         dir = Path(__file__).resolve().parent
         img: ImgData = {"src": str(dir / "images/multi_file_select.png"), "width": "80%","style": "display:block; margin:auto;"}
+        return img
+    
+    @render.image
+    def peak_settings():
+        dir = Path(__file__).resolve().parent
+        img: ImgData = {"src": str(dir / "images/advanced_settings.png"), "width": "80%","style": "display:block; margin:auto;"}
+        return img
+
+    @render.image
+    def peak_calibration():
+        dir = Path(__file__).resolve().parent
+        img: ImgData = {"src": str(dir / "images/peak_calibration.png"), "width": "80%","style": "display:block; margin:auto;"}
+        return img
+
+    @render.image
+    def baseline_settings():
+        dir = Path(__file__).resolve().parent
+        img: ImgData = {"src": str(dir / "images/peak_analysis_settings.png"), "width": "80%","style": "display:block; margin:auto;"}
         return img
 
 app = App(app_ui, server)
