@@ -636,7 +636,7 @@ def server(input, output, session):
             #plt.plot(manual_half[0],manual_half[1],'#808284')
             plt.scatter(model[0],model[2],marker='o')
             plt.title("Half-Life of "+str(key)+" at 10mM Mg")
-            plt.legend()
+            plt.legend(loc='best')
             plt.xlabel('Time (hr)')
             plt.ylabel('Normalized RNA Integrity (%)')
             plt.grid(axis = 'y')
@@ -662,7 +662,7 @@ def server(input, output, session):
             plt.scatter(p[0],p[2],marker='o',color=cm(c))
             plt.errorbar(p[0], p[2], p[4], linestyle='None', capsize=3)
         plt.title("Half-Life of Constructs at 10mM Mg")
-        plt.legend()
+        plt.legend(bbox_to_anchor=(1.1, 1.05))
         plt.xlabel('Time (hr)')
         plt.ylabel('Normalized RNA Integrity (%)')
         plt.yticks(range(0,110,10))
@@ -736,14 +736,15 @@ def server(input, output, session):
         #plot=hl_results()[2]]
         cm = plt.get_cmap('tab20')
         for c,p in enumerate(plot_data):
-            plt.plot(p[0],p[1],label=p[3],color=cm(c))
+            plt.plot(p[5],p[1],label=p[3],color=cm(c))
             plt.scatter(p[0],p[2],marker='o',color=cm(c))
+            plt.errorbar(p[0], p[2], p[4], linestyle='None', capsize=3)
         plt.title("Half-Life of Constructs at 10mM Mg")
-        plt.legend()
+        plt.legend(bbox_to_anchor=(1.1, 1.05))
         plt.xlabel('Time (hr)')
         plt.ylabel('Normalized RNA Integrity (%)')
         with io.BytesIO() as buf:
-            plt.savefig(buf,format='png')
+            plt.savefig(buf,format='png',bbox_inches='tight')
             yield buf.getvalue()
 
     @render.download(filename=lambda: f'{input.samples()}_half_life.png')
@@ -756,16 +757,17 @@ def server(input, output, session):
             for p in plot_data:
                 if p[3]==input.samples():
                     hl_plot_data=p
-            plt.plot(hl_plot_data[0],hl_plot_data[1],label=hl_plot_data[3])
+                    break
+            plt.plot(hl_plot_data[5],hl_plot_data[1],label=hl_plot_data[3])
             plt.scatter(hl_plot_data[0],hl_plot_data[2],marker='o')
             plt.title("Half-Life of "+str(hl_plot_data[3])+" at 10mM Mg")
-            plt.legend()
+            plt.legend(loc='best')
             plt.xlabel('Time (hr)')
             plt.ylabel('Normalized RNA Integrity (%)')
         except:
             print("Error: Sample not found in plot data, please try another sample")
         with io.BytesIO() as buf:
-            plt.savefig(buf,format='png')
+            plt.savefig(buf,format='png',bbox_inches='tight')
             yield buf.getvalue()
     
     @render.download(filename='samplesheet_template.csv')
