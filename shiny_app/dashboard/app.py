@@ -534,7 +534,7 @@ def server(input, output, session):
         #plt.ylabel("RNA integrity")
         #plt.xlabel("Time (hr)")
         #plt.show()
-        return x,y2,y,x_half,x2
+        return x,y2,y,x_half,x2,a,k,b
     
     def calculate_half_life(input_files,file_names,ss):
         #read in samplesheet
@@ -627,14 +627,14 @@ def server(input, output, session):
             model=half_life(np.array(time),np.array(integrity),norm_factor)
             norm_data=norm_data.assign(Normalized_Integrity=[round(x,2) for x in model[2]])
             hls.append(model[3])
-            plot_data.append([model[0],model[1],model[2],key,stdevs,model[4]])
+            plot_data.append([model[0],model[1],model[2],key,stdevs,model[4],model[5],model[6],model[7]])
             ind_plot=plt.figure()
             #plt.plot(model[0],model[1],label=key)
 
-            plt.plot(model[4],model[1],label=key)
+            plt.plot(model[4],model[1],label='$f(x) = %.3f e^{%.3f x} %+.3f$' % (model[5],model[6],model[7]))
 
             #plt.plot(manual_half[0],manual_half[1],'#808284')
-            plt.scatter(model[0],model[2],marker='o')
+            plt.scatter(model[0],model[2],marker='o',label=key)
             plt.title("Half-Life of "+str(key)+" at 10mM Mg")
             plt.legend(loc='best')
             plt.xlabel('Time (hr)')
@@ -758,8 +758,9 @@ def server(input, output, session):
                 if p[3]==input.samples():
                     hl_plot_data=p
                     break
-            plt.plot(hl_plot_data[5],hl_plot_data[1],label=hl_plot_data[3])
-            plt.scatter(hl_plot_data[0],hl_plot_data[2],marker='o')
+            plt.plot(hl_plot_data[5],hl_plot_data[1],label='$f(x) = %.3f e^{%.3f x} %+.3f$' % (hl_plot_data[6],hl_plot_data[7],hl_plot_data[8]))
+            plt.scatter(hl_plot_data[0],hl_plot_data[2],marker='o',label=hl_plot_data[3])
+            plt.errorbar(hl_plot_data[0], hl_plot_data[2], hl_plot_data[4], linestyle='None', capsize=3)
             plt.title("Half-Life of "+str(hl_plot_data[3])+" at 10mM Mg")
             plt.legend(loc='best')
             plt.xlabel('Time (hr)')
