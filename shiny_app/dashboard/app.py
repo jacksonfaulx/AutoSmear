@@ -392,7 +392,7 @@ def server(input, output, session):
             lb_idx=list(xvals).index(left_bound)
             rb_idx=list(xvals).index(right_bound)
             #The total area and area within the gates are then calculated to give a percentage
-            total_area=np.trapz(y=yvals[lb_idx:rb_idx+1],x=xvals[lb_idx:rb_idx+1])
+            total_area=np.trapz(y=yvals[lb_idx:],x=xvals[lb_idx:])
             gated_area=np.trapz(y=yvals[lidx:ridx+1],x=xvals[lidx:ridx+1])
             percent=(gated_area/total_area)*100
             percents.append(round(percent,2))
