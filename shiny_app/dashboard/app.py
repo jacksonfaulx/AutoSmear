@@ -17,8 +17,7 @@ import math
 
 app_dir = Path(__file__).parent
 app_ui = ui.page_fluid(
-    ui.tags.style("body {padding-top: 105px;} \
-                    nav {border: 2px solid black; \
+    ui.tags.style("nav {border: 2px solid black; \
                         border-radius: 5px;} \
                     .bslib-sidebar-layout {border:2px solid black; \
                                         border-radius: 5px;} \
@@ -28,7 +27,7 @@ app_ui = ui.page_fluid(
                     .bslib-card {border: 2px solid black} \
                     .tab-content{background-color:#F1EFEA;} \
                     .navbar-brand{padding-left:12px;} \
-                    .samples .form-group {margin:auto; justify-content:center;}"),
+                    .samples .form-group {margin:auto; justify-content:center;}"), #body {padding-top: 105px;} \
     ui.page_navbar(
         ui.nav_spacer(),
         ui.nav_panel(ui.h4("AutoSmear"),
@@ -247,7 +246,7 @@ app_ui = ui.page_fluid(
         title=ui.div(ui.h1("Automated Smear Analysis"),
                      ui.h1("and Half-Life Calculator")
         ),
-        position='fixed-top',bg='#FC1921',window_title="AutoSmear_HL",inverse=True
+        bg='#FC1921',window_title="AutoSmear_HL",inverse=True #position='fixed-top'
     ),
     ui.p("Developed and managed by Jackson Faulx. Please email jackson.faulx@seqirus.com regarding any issues or inquiries",id_="footer"),
 )
