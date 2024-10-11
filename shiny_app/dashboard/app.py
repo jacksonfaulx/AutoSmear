@@ -25,8 +25,8 @@ app_ui = ui.page_fluid(
                                         padding-right:0;} \
                     p#footer {margin:auto; text-align:center; margin-bottom:20px;} \
                     .bslib-card {border: 2px solid black} \
-                    .tab-content{background-color:#F1EFEA;} \
-                    .navbar-brand{padding-left:12px;} \
+                    .tab-content {background-color:#F1EFEA;} \
+                    .navbar-brand {padding-left:12px;} \
                     .samples .form-group {margin:auto; justify-content:center;}"), #body {padding-top: 105px;} \
     ui.page_navbar(
         ui.nav_spacer(),
@@ -38,6 +38,9 @@ app_ui = ui.page_fluid(
                         ui.h2("Data Input"),
                         ui.input_file("input_csv",ui.h4("Choose Electropherogram File (CSV)"),accept=[".csv"],multiple=False),
                         ui.help_text("Upload an Electropherogram.csv file exported from ProSize, with size (nt) as the x-axis value"),
+                        ui.input_select("method","Select Integration Method:",["AutoSmear (Default)","+/- 5%"],selected="AutoSmear (Default)"),
+                        ui.help_text("Choose your preferred method of integration. AutoSmear determines its peak boundaries algorithmically based on the change of slope at the \
+                                    edges of the peak, while the +/- 5% method places it's boundaries at + and - 5 percent of the identified peak size."),
                         ui.input_text("exp_name",ui.h4("Experiment Name"),placeholder="ex. EXP_01"),
                         ui.help_text("Type in a name for the experiment. This name will be added to the file names of the downloadable plots and tables"),
                         ui.input_action_button('submit','Submit'),
@@ -72,9 +75,9 @@ app_ui = ui.page_fluid(
                         ui.p("This tool is designed to fit the integrity values calculated using ProSize or AutoSmear to a one-phase decay equation, plotting the resulting curve and calculating the half-life of a construct based on timepoints."),
                         #ui.p("The script takes a samplesheet as an input, indicating the paths of relevant smear analysis files to be analyzed, along with details regarding sample groups and their corresponding lanes in the smear table. If multiple constructs are present within the data, a combined plot and data table will be generated as an output for comparison"),
                         ui.h2("Data Input"),
-                        ui.input_file("input_hl",ui.h4("Choose Smear Results File (CSV)"),accept=[".csv"],multiple=True),
+                        ui.input_file("input_hl",ui.h4("Choose Smear Results File(s) (CSV)"),accept=[".csv"],multiple=True),
                         ui.help_text("Upload one or more smear results files (.csv format), obtained from AutoSmear or ProSize"),
-                        ui.input_file("input_ss",ui.h4("Upload Sample Sheet"),multiple=False,accept=[".csv"]),
+                        ui.input_file("input_ss",ui.h4("Upload Sample Sheet (CSV)"),multiple=False,accept=[".csv"]),
                         ui.help_text('Upload a samplesheet formatted as detailed in the "Help" tab. An example template can be downloaded below'),
                         ui.download_link("example_sheet","Download Samplesheet Template"),
                         ui.input_text("exp_hl",ui.h4("Experiment Name"),placeholder="ex. EXP_01"),
@@ -255,6 +258,7 @@ app_ui = ui.page_fluid(
 def server(input, output, session):
 
 # AutoSmear - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
     def AutoSmear(data,length=10000):
         ''' 
         Gates are placed +/- the `window` size from the target fragment peak. 
@@ -286,6 +290,7 @@ def server(input, output, session):
         percents=[]
         left_gates=[]
         right_gates=[]
+        peak_locs=[]
         #If there is no peak found for the first lane, the y value at x=length is set
         pp=xvals[min(range(len(xvals)),key=lambda i: abs(xvals[i]-length))]
         previous_peak=list(xvals).index(pp)
@@ -385,6 +390,7 @@ def server(input, output, session):
             ridx=list(xvals).index(x_right[right_midx])
             left_gates.append(round(xvals[lidx]))
             right_gates.append(round(xvals[ridx]))
+            peak_locs.append(round(xvals[peak]))
             #the integration boundaries are then set to leave out the control spike and the noise at the end of the data
             left_bound=xvals[min(range(len(xvals)),key=lambda i: abs(xvals[i]-125))]
             right_bound=xvals[min(range(len(xvals)),key=lambda i: abs(xvals[i]-13800))]
@@ -419,11 +425,153 @@ def server(input, output, session):
         #following the above analysis for each run, the results table is updated and written into a csv file in a new folder called "smear_analysis"
         smear_table=smear_table.assign(Left_Gate=left_gates)
         smear_table=smear_table.assign(Right_Gate=right_gates)
+        smear_table=smear_table.assign(Peak=peak_locs)
         smear_table=smear_table.assign(Percent_Total=percents)
         #the graphs of peak calling for each sample are written to a jpg in the same folder
         plt.savefig("peaks_plot.png",bbox_inches='tight')
         return [smear_table,fig]
     
+
+    def FivePercent(data,length=10000):
+        ''' 
+        Gates are placed +/- 5% from the target fragment peak size. 
+
+        Calculated RNA integrity along with the peak boundaries
+        along with grid of plots visualizing the gating for each capillary
+        are output as a .csv file to 'smear_results' folder
+        '''
+        #a window used to look for the main peak is established. After lots of testing, 1200 seems to provide the most accurate results
+        window=1200
+        #the lengths of columns and the names of each sample lane are defined
+        cols=len(data.columns)
+        names=list(data.columns.values)
+        names_split=[n.split(": ") for n in names[:-1]]
+        #input check to make sure that the data was correctly exported from ProSize
+        if names_split[0][0]!='Size (nt)':
+            if names_split[0][0]!='Size (bp)':
+                raise Exception("Error: x-axis values must be size (nt). Please export electropherogram data from ProSize with size (nt) as the x-axis")
+        #the results table is then set up with a list of sample names and their associated capillary
+        IDs=[i[1] for i in names_split[1:]]
+        lanes=[l[0] for l in names_split[1:]]
+        smear_table=pd.DataFrame(lanes,columns=['Lane'])
+        smear_table=smear_table.assign(ID=IDs)
+        #x values (size in nt) are established
+        xvals=data.iloc[:,0]
+        #A few empty lists are established to add data to as the algorithm progresses
+        percents=[]
+        left_gates=[]
+        right_gates=[]
+        peak_locs=[]
+        #If there is no peak found for the first lane, the y value at x=length is set
+        pp=xvals[min(range(len(xvals)),key=lambda i: abs(xvals[i]-length))]
+        previous_peak=list(xvals).index(pp)
+        #I then set up the grid dimensions for the peak calling visualization graphs
+        sqrt = math.sqrt(cols-2)
+        closest = [math.floor(sqrt)**2,math.ceil(sqrt)**2]
+        nearsq=closest[min(range(len(closest)),key=lambda i: abs(closest[i]-(cols-2)))]
+        #This code constructs the grid of gating plots 
+        if nearsq>(cols-2):
+            sqr=math.sqrt(nearsq)
+            sqy=math.sqrt(nearsq)
+            sqx=math.sqrt(nearsq)
+            diff=nearsq-(cols-2)
+            while diff>sqr:
+                sqy-=1
+                diff-=sqr
+            fig,axs=plt.subplots(int(sqy),int(sqx))
+        elif nearsq<(cols-2):
+            sqr=math.sqrt(nearsq)
+            sqy=math.sqrt(nearsq)+1
+            sqx=math.sqrt(nearsq)
+            diff=(cols-2)-nearsq
+            while diff>sqr:
+                sqy+=1
+                diff-=sqr
+            fig,axs=plt.subplots(int(sqy),int(sqx))
+        elif nearsq==(cols-2):
+            sqy=math.sqrt(nearsq)
+            sqx=math.sqrt(nearsq)
+            fig,axs=plt.subplots(int(sqy),int(sqx))
+        grid_ax=[0,0]
+        start_peak=xvals[min(range(len(xvals)),key=lambda i: abs(xvals[i]-10000))]
+        previous_peak=list(xvals).index(start_peak)
+        #I then iterate over each sample run (capillary)
+        for i in range(1,cols-1):
+            #RFU (y-values) are established
+            yvals=data.iloc[:,i]
+            #peak calling is performed, and the peak with the largest size (x-value) is isolated. the minimum peak height of 50 is used (same as ProSize)
+            peaks,_=find_peaks(yvals,height=50)
+            peak_list=[]
+            #peaks that are between 9000 and 15000 bp length are added to the peaks list
+            for p in peaks:
+                if xvals[p]>(length-1000) and xvals[p]<(length+5000):
+                    peak_list.append(p)
+            #if no peaks are detected, then the peak determined from the previous capillary is used to as the peak
+            if len(peak_list)==0:
+                peak=previous_peak
+            #else, the peak with the highest x-value (farthest right) in the list of called peaks is used as the peak of interest
+            else:
+                peak_ys=[yvals[i] for i in peak_list]
+                max_idx=peak_ys.index(max(peak_ys))
+                peak=peak_list[max_idx]
+                previous_peak=peak
+                #If there are "twin peaks" the rightmost one is selected
+                for p in peak_list:
+                    #twin peaks are defined as two peaks close together that are at least 60% the height of the taller one
+                    if (yvals[p]/yvals[peak])>0.6 and p!=peak:
+                        peak=max(peak,p)
+            #Peak boundaries are defined as x-values + and - 5% of the size of the peak
+            peak_nt=xvals[peak]
+            five_percent=peak_nt*0.05
+            plus=peak_nt+five_percent
+            minus=peak_nt-five_percent
+            plus_gate=xvals[min(range(len(xvals)),key=lambda i: abs(xvals[i]-plus))]
+            minus_gate=xvals[min(range(len(xvals)),key=lambda i: abs(xvals[i]-minus))]
+            plus_idx=list(xvals).index(plus_gate)
+            minus_idx=list(xvals).index(minus_gate)
+            left_gates.append(round(xvals[minus_idx]))
+            right_gates.append(round(xvals[plus_idx]))
+            peak_locs.append(round(xvals[peak]))
+            #the integration boundaries are then set to leave out the control spike and the noise at the end of the data
+            left_bound=xvals[min(range(len(xvals)),key=lambda i: abs(xvals[i]-125))]
+            right_bound=xvals[min(range(len(xvals)),key=lambda i: abs(xvals[i]-13800))]
+            lb_idx=list(xvals).index(left_bound)
+            rb_idx=list(xvals).index(right_bound)
+            #The total area and area within the gates are then calculated to give a percentage
+            total_area=np.trapz(y=yvals[lb_idx:],x=xvals[lb_idx:])
+            gated_area=np.trapz(y=yvals[minus_idx:plus_idx+1],x=xvals[minus_idx:plus_idx+1])
+            percent=(gated_area/total_area)*100
+            percents.append(round(percent,2))
+            #The data and gates are then plotted in a grid
+            plot_x=xvals[min(range(len(xvals)),key=lambda i: abs(xvals[i]-15000))]
+            cutoff=list(xvals).index(plot_x)
+            axs[grid_ax[0],grid_ax[1]].plot(xvals[:cutoff],yvals[:cutoff])
+            axs[grid_ax[0],grid_ax[1]].plot(xvals[peak],yvals[peak],'x')
+            axs[grid_ax[0],grid_ax[1]].axvline(x=xvals[minus_idx],color='r',linestyle='dashed')
+            axs[grid_ax[0],grid_ax[1]].axvline(x=xvals[plus_idx],color='r',linestyle='dashed')
+            axs[grid_ax[0],grid_ax[1]].set_title(names[i])
+            grid_ax[1]+=1
+            if grid_ax[1]==int(sqx):
+                grid_ax[1]=0
+                grid_ax[0]+=1
+        if cols<90:
+            plt.subplots_adjust(bottom=0.1,right=3,top=3)
+        else:
+            plt.subplots_adjust(bottom=0.1,right=10,top=10)
+        grid_total=int(sqy*sqx)
+        gdiff=grid_total-(cols-2)
+        if gdiff>0:
+            for num in range(int(gdiff)):
+                fig.delaxes(axs[int(sqy)-1][(int(sqx)-1)-int(num)])
+        #following the above analysis for each run, the results table is updated and written into a csv file in a new folder called "smear_analysis"
+        smear_table=smear_table.assign(Left_Gate=left_gates)
+        smear_table=smear_table.assign(Right_Gate=right_gates)
+        smear_table=smear_table.assign(Peak=peak_locs)
+        smear_table=smear_table.assign(Percent_Total=percents)
+        #the graphs of peak calling for each sample are written to a jpg in the same folder
+        plt.savefig("peaks_plot.png",bbox_inches='tight')
+        return [smear_table,fig]
+
 
     # REACTIVES
 
@@ -439,35 +587,38 @@ def server(input, output, session):
 
     @reactive.calc
     def smear_results():
-        req(input.input_csv(),input.exp_name(),input.submit())
+        req(input.input_csv(),input.exp_name(),input.submit(),input.method())
         df=parsed_file()
-        smear_data=AutoSmear(df)
+        if input.method()=="AutoSmear (Default)":
+            smear_data=AutoSmear(df)
+        elif input.method()=="+/- 5%":
+            smear_data=FivePercent(df)
         return smear_data
 
 
     @render.data_frame
     def smear_table():
-        req(input.input_csv(),input.exp_name(),input.submit())
+        req(input.input_csv(),input.exp_name(),input.submit(),input.method())
         return render.DataGrid(smear_results()[0],width='100%')
 
     
     @render.download(filename=lambda: f'{input.exp_name()}_smear_table.csv')
     def smear_download():
-        req(input.input_csv(),input.exp_name(),input.submit())
+        req(input.input_csv(),input.exp_name(),input.submit(),input.method())
         with io.BytesIO() as buf:
             smear_results()[0].to_csv(buf,index=False)
             yield buf.getvalue()
 
     @render.download(filename=lambda: f'{input.exp_name()}_peaks.png')
     def plot_download():
-        req(input.input_csv(),input.exp_name(),input.submit())
+        req(input.input_csv(),input.exp_name(),input.submit(),input.method())
         filename=str(input.exp_name())+'_peaks.png'
         path=os.path.join(os.path.dirname(__file__),"peaks_plot.png")
         return path
 
     @render.image
     def plots():
-        req(input.input_csv(),input.exp_name(),input.submit())
+        req(input.input_csv(),input.exp_name(),input.submit(),input.method())
         fullpath=os.path.join(os.path.dirname(__file__),"peaks_plot.png")
         img: ImgData = {"src": fullpath}
         return img
@@ -521,18 +672,6 @@ def server(input, output, session):
                     x_half = (np.log((y_half-b)/a))/-k
                     #print(y_half, x_half, bottom_y)
                     break
-        #fig, ax = plt.subplots()
-        #ax.plot(x2, y2, color='r', label='Fit. func: $f(x) = %.3f e^{%.3f x} %+.3f$' % (a,k,b))
-        #ax.plot(x, y, 'bo', label='whatever construct')
-        #ax.plot(x_half, y_half, 'go', label="half_life "+str(x_half)[:6])
-        #x2, y2 = [0, x_half], [y_half, y_half]
-        #x1, y1 = [x_half, x_half], [bottom_y, y_half]
-        #plt.plot(x2, y2, 'g--')
-        #plt.plot(x1, y1, 'g--')
-        #ax.legend(loc='best')
-        #plt.ylabel("RNA integrity")
-        #plt.xlabel("Time (hr)")
-        #plt.show()
         return x,y2,y,x_half,x2,a,k,b
     
     def calculate_half_life(input_files,file_names,ss):
