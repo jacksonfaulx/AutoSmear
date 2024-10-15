@@ -77,7 +77,7 @@ app_ui = ui.page_fluid(
                         ui.h2("Data Input"),
                         ui.input_file("input_hl",ui.h4("Choose Smear Results File(s) (CSV)"),accept=[".csv"],multiple=True),
                         ui.help_text("Upload one or more smear results files (.csv format), obtained from AutoSmear or ProSize"),
-                        ui.input_file("input_ss",ui.h4("Upload Sample Sheet (CSV)"),multiple=False,accept=[".csv"]),
+                        ui.input_file("input_ss",ui.h4("Upload Sample Sheet (CSV)"),multiple=False,accept=[".csv",".tsv",".txt"]),
                         ui.help_text('Upload a samplesheet formatted as detailed in the "Help" tab. An example template can be downloaded below'),
                         ui.download_link("example_sheet","Download Samplesheet Template"),
                         ui.input_text("exp_hl",ui.h4("Experiment Name"),placeholder="ex. EXP_01"),
@@ -676,6 +676,7 @@ def server(input, output, session):
     
     def calculate_half_life(input_files,file_names,ss):
         #read in samplesheet
+        pd.set_option("display.max_colwidth", 10000)
         try:
             sample_sheet=pd.read_csv(ss)
         except Exception:
@@ -697,7 +698,6 @@ def server(input, output, session):
                 skip=samples[samples["Construct"]==s]['Skip_Lanes'].to_string(index=False)
                 skip_list=skip.split(',')
                 skip_list=[x.replace(' ','') for x in skip_list]
-                #print(lane_list)
                 sample_lanes=[]
                 for l in lane_list:
                     l=l.replace(' ','')
@@ -727,7 +727,7 @@ def server(input, output, session):
             IDs=tab["ID"].tolist()
             for a in IDs:
                 #will find the timepoint as long as it is the last number found in the sample ID
-                hour=re.findall(r'\d+', a)[-1]
+                hour=re.findall(r"\d+(?:\.\d+)?", a)[-1]
                 if not hour:
                     raise Exception("Error: Cannot determine timepoint from sample name. Please make sure the sample name ends with the timepoint preceded by an underscore (eg. sample1_4hr)")
                 timescale.append(hour)
