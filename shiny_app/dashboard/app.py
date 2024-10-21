@@ -672,6 +672,8 @@ def server(input, output, session):
         ## half life calculation 
         # establish bottom 
         for time_x in range(100000) :
+            #loop through time points until the difference in integrity between timepoints is less than 0.01, which is then considered as where the
+            #function plateaus
             if time_x > 0 :
                 x_diff = time_x-(time_x-1) 
                 y_diff = (a * np.exp(-k*time_x) + b) -  (a * np.exp(-k*(time_x-1)) + b)
@@ -679,6 +681,7 @@ def server(input, output, session):
                     ## determine this as plateau
                     bottom_y = (a * np.exp(-k*time_x) + b)
                     y_half = (100-(a * np.exp(-k*time_x) + b))/2
+                    y_half = 100-y_half
                     x_half = (np.log((y_half-b)/a))/-k
                     #print(y_half, x_half, bottom_y)
                     xdot2, ydot2 = [0, x_half], [y_half, y_half]
