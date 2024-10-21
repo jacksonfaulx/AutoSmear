@@ -780,7 +780,7 @@ def server(input, output, session):
             model=half_life(np.array(time),np.array(integrity),norm_factor)
             norm_data=norm_data.assign(Normalized_Integrity=[round(x,2) for x in model[2]])
             hls.append(model[3])
-            plot_data.append([model[0],model[1],model[2],key,stdevs,model[4],model[5],model[6],model[7]])
+            plot_data.append([model[0],model[1],model[2],key,stdevs,model[4],model[5],model[6],model[7],model[8],model[9],model[3]])
             ind_plot=plt.figure()
             #plt.plot(model[0],model[1],label=key)
 
@@ -932,6 +932,9 @@ def server(input, output, session):
                         hl_plot_data=p
                         break
                 plt.plot(hl_plot_data[5],hl_plot_data[1],label='$f(x) = %.3f e^{%.3f x} %+.3f$' % (hl_plot_data[6],hl_plot_data[7],hl_plot_data[8]))
+                plt.plot(hl_plot_data[11], hl_plot_data[9], 'ro', label="half_life "+str(hl_plot_data[11])[:6])
+                plt.plot(hl_plot_data[10][2], hl_plot_data[10][3], 'r--')
+                plt.plot(hl_plot_data[10][0], hl_plot_data[10][1], 'r--')
                 plt.scatter(hl_plot_data[0],hl_plot_data[2],marker='o',label=hl_plot_data[3])
                 plt.errorbar(hl_plot_data[0], hl_plot_data[2], hl_plot_data[4], linestyle='None', capsize=3)
                 plt.title("Half-Life of "+str(hl_plot_data[3])+" at 10mM Mg")
