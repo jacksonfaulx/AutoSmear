@@ -587,41 +587,51 @@ def server(input, output, session):
 
     @reactive.calc
     def smear_results():
-        req(input.input_csv(),input.exp_name(),input.submit(),input.method())
-        df=parsed_file()
-        if input.method()=="AutoSmear (Default)":
-            smear_data=AutoSmear(df)
-        elif input.method()=="+/- 5%":
-            smear_data=FivePercent(df)
-        return smear_data
+        input.submit()
+        with reactive.isolate():
+            req(input.input_csv(),input.exp_name(),input.method())
+            df=parsed_file()
+            if input.method()=="AutoSmear (Default)":
+                smear_data=AutoSmear(df)
+            elif input.method()=="+/- 5%":
+                smear_data=FivePercent(df)
+            return smear_data
 
 
     @render.data_frame
     def smear_table():
-        req(input.input_csv(),input.exp_name(),input.submit(),input.method())
-        return render.DataGrid(smear_results()[0],width='100%')
+        input.submit()
+        with reactive.isolate():
+            req(input.input_csv(),input.exp_name(),input.method())
+            return render.DataGrid(smear_results()[0],width='100%')
 
     
     @render.download(filename=lambda: f'{input.exp_name()}_smear_table.csv')
     def smear_download():
-        req(input.input_csv(),input.exp_name(),input.submit(),input.method())
-        with io.BytesIO() as buf:
-            smear_results()[0].to_csv(buf,index=False)
-            yield buf.getvalue()
+        input.submit()
+        with reactive.isolate():
+            req(input.input_csv(),input.exp_name(),input.method())
+            with io.BytesIO() as buf:
+                smear_results()[0].to_csv(buf,index=False)
+                yield buf.getvalue()
 
     @render.download(filename=lambda: f'{input.exp_name()}_peaks.png')
     def plot_download():
-        req(input.input_csv(),input.exp_name(),input.submit(),input.method())
-        filename=str(input.exp_name())+'_peaks.png'
-        path=os.path.join(os.path.dirname(__file__),"peaks_plot.png")
-        return path
+        input.submit()
+        with reactive.isolate():
+            req(input.input_csv(),input.exp_name(),input.method())
+            filename=str(input.exp_name())+'_peaks.png'
+            path=os.path.join(os.path.dirname(__file__),"peaks_plot.png")
+            return path
 
     @render.image
     def plots():
-        req(input.input_csv(),input.exp_name(),input.submit(),input.method())
-        fullpath=os.path.join(os.path.dirname(__file__),"peaks_plot.png")
-        img: ImgData = {"src": fullpath}
-        return img
+        input.submit()
+        with reactive.isolate():
+            req(input.input_csv(),input.exp_name(),input.method())
+            fullpath=os.path.join(os.path.dirname(__file__),"peaks_plot.png")
+            img: ImgData = {"src": fullpath}
+            return img
     
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -671,8 +681,10 @@ def server(input, output, session):
                     y_half = (100-(a * np.exp(-k*time_x) + b))/2
                     x_half = (np.log((y_half-b)/a))/-k
                     #print(y_half, x_half, bottom_y)
+                    xdot2, ydot2 = [0, x_half], [y_half, y_half]
+                    xdot1, ydot1 = [x_half, x_half], [0, y_half]
                     break
-        return x,y2,y,x_half,x2,a,k,b
+        return x,y2,y,x_half,x2,a,k,b,y_half,[xdot1,ydot1,xdot2,ydot2]
     
     def calculate_half_life(input_files,file_names,ss):
         #read in samplesheet
@@ -770,6 +782,9 @@ def server(input, output, session):
             #plt.plot(model[0],model[1],label=key)
 
             plt.plot(model[4],model[1],label='$f(x) = %.3f e^{%.3f x} %+.3f$' % (model[5],model[6],model[7]))
+            plt.plot(model[3], model[8], 'ro', label="half_life "+str(model[3])[:6])
+            plt.plot(model[9][2], model[9][3], 'r--')
+            plt.plot(model[9][0], model[9][1], 'r--')
 
             #plt.plot(manual_half[0],manual_half[1],'#808284')
             plt.scatter(model[0],model[2],marker='o',label=key)
@@ -782,6 +797,7 @@ def server(input, output, session):
             plt_dict[key]=ind_plot
             st_dict[key]=norm_data
             plt.errorbar(model[0], model[2], stdevs, linestyle='None', capsize=3)
+            plt.close()
             #plt.scatter(manual_half[0],manual_half[2],color='#808284',marker='o')
         #plt.legend(['Automated','Manual (Mark)'])
         #Need a way to first plot individual plots, then add plot object to a list for graphing against other sample groups
@@ -813,39 +829,47 @@ def server(input, output, session):
 
     @reactive.calc
     def hl_results():
-        req(input.input_hl(),input.exp_hl(),input.submit_hl(),input.input_ss())
-        inputs=input.input_hl()
-        path_list=[]
-        name_list=[]
-        for dic in inputs:
-            name_list.append(dic['name'])
-            path_list.append(dic['datapath'])
-        hl_data=calculate_half_life(path_list,name_list,input.input_ss()[0]['datapath'])
-        #print(hl_data[0])
-        return hl_data
+        input.submit_hl()
+        with reactive.isolate():
+            req(input.input_hl(),input.exp_hl(),input.input_ss())
+            inputs=input.input_hl()
+            path_list=[]
+            name_list=[]
+            for dic in inputs:
+                name_list.append(dic['name'])
+                path_list.append(dic['datapath'])
+            hl_data=calculate_half_life(path_list,name_list,input.input_ss()[0]['datapath'])
+            #print(hl_data[0])
+            return hl_data
     
     @render.ui
     def sample_select():
-        req(input.input_hl(),input.exp_hl(),input.submit_hl(),input.input_ss(),hl_results())
-        return ui.column(2,ui.input_select('samples','Choose A Sample to Visualize',
-                               hl_results()[4]),offset=5)
+        input.submit_hl()
+        with reactive.isolate():
+            req(input.input_hl(),input.exp_hl(),input.input_ss(),hl_results())
+            return ui.column(2,ui.input_select('samples','Choose A Sample to Visualize',
+                                hl_results()[4]),offset=5)
 
 
     @render.data_frame
     def norm_smear():
-        req(input.input_hl(),input.exp_hl(),input.submit_hl(),input.input_ss(),input.samples())
+        req(input.input_hl(),input.submit_hl(),input.exp_hl(),input.input_ss(),input.samples())
         return render.DataGrid(hl_results()[0][input.samples()],width='100%')
     
     @render.data_frame
     def hl_table():
-        req(input.input_hl(),input.exp_hl(),input.submit_hl(),input.input_ss())
-        return render.DataGrid(hl_results()[1],width='100%')
+        input.submit_hl()
+        with reactive.isolate():
+            req(input.input_hl(),input.exp_hl(),input.input_ss())
+            return render.DataGrid(hl_results()[1],width='100%')
 
     
     @render.plot
     def combined_plot():
-        req(input.input_hl(),input.exp_hl(),input.submit_hl(),input.input_ss())
-        return hl_results()[2]
+        input.submit_hl()
+        with reactive.isolate():
+            req(input.input_hl(),input.exp_hl(),input.input_ss())
+            return hl_results()[2]
     
     @render.plot
     def hl_plots():
@@ -854,60 +878,68 @@ def server(input, output, session):
 
     @render.download(filename=lambda: f'{input.samples()}_smear_summary_table.csv')
     def norm_smear_download():
-        req(input.input_hl(),input.exp_hl(),input.submit_hl(),input.input_ss(),input.samples())
-        with io.BytesIO() as buf:
-            hl_results()[0][input.samples()].to_csv(buf,index=False)
-            yield buf.getvalue()
+        input.submit_hl()
+        with reactive.isolate():
+            req(input.input_hl(),input.exp_hl(),input.input_ss(),input.samples())
+            with io.BytesIO() as buf:
+                hl_results()[0][input.samples()].to_csv(buf,index=False)
+                yield buf.getvalue()
     
     @render.download(filename=lambda: f'{input.exp_hl()}_half_life_table.csv')
     def hl_table_download():
-        req(input.input_hl(),input.exp_hl(),input.submit_hl(),input.input_ss())
-        with io.BytesIO() as buf:
-            hl_results()[1].to_csv(buf,index=False)
-            yield buf.getvalue()
+        input.submit_hl()
+        with reactive.isolate():
+            req(input.input_hl(),input.exp_hl(),input.input_ss())
+            with io.BytesIO() as buf:
+                hl_results()[1].to_csv(buf,index=False)
+                yield buf.getvalue()
     
     @render.download(filename=lambda: f'{input.exp_hl()}_combined_half_life.png')
     def combined_plot_download():
-        req(input.input_hl(),input.exp_hl(),input.submit_hl(),input.input_ss())
-        plt.figure()
-        plot_data=hl_results()[5]
-        #plot=hl_results()[2]]
-        cm = plt.get_cmap('tab20')
-        for c,p in enumerate(plot_data):
-            plt.plot(p[5],p[1],label=p[3],color=cm(c))
-            plt.scatter(p[0],p[2],marker='o',color=cm(c))
-            plt.errorbar(p[0], p[2], p[4], linestyle='None', capsize=3)
-        plt.title("Half-Life of Constructs at 10mM Mg")
-        plt.legend(bbox_to_anchor=(1.1, 1.05))
-        plt.xlabel('Time (hr)')
-        plt.ylabel('Normalized RNA Integrity (%)')
-        with io.BytesIO() as buf:
-            plt.savefig(buf,format='png',bbox_inches='tight')
-            yield buf.getvalue()
+        input.submit_hl()
+        with reactive.isolate():
+            req(input.input_hl(),input.exp_hl(),input.input_ss())
+            plt.figure()
+            plot_data=hl_results()[5]
+            #plot=hl_results()[2]]
+            cm = plt.get_cmap('tab20')
+            for c,p in enumerate(plot_data):
+                plt.plot(p[5],p[1],label=p[3],color=cm(c))
+                plt.scatter(p[0],p[2],marker='o',color=cm(c))
+                plt.errorbar(p[0], p[2], p[4], linestyle='None', capsize=3)
+            plt.title("Half-Life of Constructs at 10mM Mg")
+            plt.legend(bbox_to_anchor=(1.1, 1.05))
+            plt.xlabel('Time (hr)')
+            plt.ylabel('Normalized RNA Integrity (%)')
+            with io.BytesIO() as buf:
+                plt.savefig(buf,format='png',bbox_inches='tight')
+                yield buf.getvalue()
 
     @render.download(filename=lambda: f'{input.samples()}_half_life.png')
     def hl_plots_download():
-        req(input.input_hl(),input.exp_hl(),input.submit_hl(),input.input_ss(),input.samples())
-        plt.figure()
-        plot_data=hl_results()[5]
-        #plot=hl_results()[2]
-        try:
-            for p in plot_data:
-                if p[3]==input.samples():
-                    hl_plot_data=p
-                    break
-            plt.plot(hl_plot_data[5],hl_plot_data[1],label='$f(x) = %.3f e^{%.3f x} %+.3f$' % (hl_plot_data[6],hl_plot_data[7],hl_plot_data[8]))
-            plt.scatter(hl_plot_data[0],hl_plot_data[2],marker='o',label=hl_plot_data[3])
-            plt.errorbar(hl_plot_data[0], hl_plot_data[2], hl_plot_data[4], linestyle='None', capsize=3)
-            plt.title("Half-Life of "+str(hl_plot_data[3])+" at 10mM Mg")
-            plt.legend(loc='best')
-            plt.xlabel('Time (hr)')
-            plt.ylabel('Normalized RNA Integrity (%)')
-        except:
-            print("Error: Sample not found in plot data, please try another sample")
-        with io.BytesIO() as buf:
-            plt.savefig(buf,format='png',bbox_inches='tight')
-            yield buf.getvalue()
+        input.submit_hl()
+        with reactive.isolate():
+            req(input.input_hl(),input.exp_hl(),input.input_ss(),input.samples())
+            plt.figure()
+            plot_data=hl_results()[5]
+            #plot=hl_results()[2]
+            try:
+                for p in plot_data:
+                    if p[3]==input.samples():
+                        hl_plot_data=p
+                        break
+                plt.plot(hl_plot_data[5],hl_plot_data[1],label='$f(x) = %.3f e^{%.3f x} %+.3f$' % (hl_plot_data[6],hl_plot_data[7],hl_plot_data[8]))
+                plt.scatter(hl_plot_data[0],hl_plot_data[2],marker='o',label=hl_plot_data[3])
+                plt.errorbar(hl_plot_data[0], hl_plot_data[2], hl_plot_data[4], linestyle='None', capsize=3)
+                plt.title("Half-Life of "+str(hl_plot_data[3])+" at 10mM Mg")
+                plt.legend(loc='best')
+                plt.xlabel('Time (hr)')
+                plt.ylabel('Normalized RNA Integrity (%)')
+            except:
+                print("Error: Sample not found in plot data, please try another sample")
+            with io.BytesIO() as buf:
+                plt.savefig(buf,format='png',bbox_inches='tight')
+                yield buf.getvalue()
     
     @render.download(filename='samplesheet_template.csv')
     def example_sheet():
